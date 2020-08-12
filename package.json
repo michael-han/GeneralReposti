@@ -1,0 +1,14 @@
+{
+  "name": "generalreposti",
+  "version": "1.0.0",
+  "description": "Discord Bot to detect if you have posted something that already has been posted.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "michael-han",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.2.0"
+  }
+}
