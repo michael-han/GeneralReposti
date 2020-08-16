@@ -1,4 +1,4 @@
-const { prefix, tokens } = require('../config.json');
+require('dotenv').config();
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
@@ -13,7 +13,7 @@ if (!globalThis.fetch) {
     globalThis.fetch = fetch;
 }
 const Giphy = require('@giphy/js-fetch-api');
-const giphy = new Giphy.GiphyFetch(tokens.giphy);
+const giphy = new Giphy.GiphyFetch(process.env.GIPHY);
 
 const moment = require('moment');
 
@@ -159,4 +159,4 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 
 process.on('unhandledRejection', error => console.error('Uncaught Promise Rejection', error));
 
-client.login(tokens.discord);
+client.login(process.env.DISCORD);
