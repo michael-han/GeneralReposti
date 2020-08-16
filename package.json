@@ -1,14 +1,21 @@
 {
   "name": "generalreposti",
-  "version": "1.0.0",
   "description": "Discord Bot to detect if you have posted something that already has been posted.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "michael-han",
-  "license": "ISC",
+  "author": "Michael Han",
+  "version": "1.0.0",
+  "repository": "https://github.com/michael-han/GeneralReposti",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^12.2.0"
+    "@giphy/js-fetch-api": "^1.6.1",
+    "discord.js": "^12.2.0",
+    "moment": "^2.27.0",
+    "node-fetch": "^2.6.0",
+    "winston": "^3.3.3"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node .",
+    
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
