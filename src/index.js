@@ -17,7 +17,7 @@ const giphy = new Giphy.GiphyFetch(process.env.GIPHY);
 
 const moment = require('moment');
 
-async function generateGifUrl(searchTerm) {
+async function fetchGifUrl(searchTerm) {
     const { data: gifs } = await giphy.search(searchTerm, {
         type: "gifs",
         sort: "relevant",
@@ -27,7 +27,6 @@ async function generateGifUrl(searchTerm) {
 }
 
 async function fetchMessages(channel) {
-    console.log("fetchMessages", channel);
     // expects discordjs::TextChannel
     if (channel.type !== "text") {
         throw new Error("Channel type is not text");
@@ -35,14 +34,21 @@ async function fetchMessages(channel) {
 
     if (channel.messages.cache.size < 100) {
         // fetch from API to double check that there are more than 100 messages in the channel
-        console.log("Fetching messages from API");
         return await channel.messages.fetch({"limit": 100}, true);
     }
     return channel.messages.cache;
 }
 
+async function fetchPinnedMessages(channel) {
+     // expects discordjs::TextChannel
+     if (channel.type !== "text") {
+        throw new Error("Channel type is not text");
+    }
+
+    return await channel.messages.fetchPinned(true);
+}
+
 function findMessageInChannel(message, messageManager) {
-    console.log("findMessageInChannel");
     // expects discordjs::Collection<Snowflake, Message> and string
     return messageManager.find(item => {
         if (item.content === message.content) {
@@ -62,9 +68,22 @@ function findMessageInChannel(message, messageManager) {
     });
 }
 
-async function findRepost(message) {
-    console.log("findRepost", message);
+async function sendRepostMessage(start, channel, originalMessage) {
+    let url = await fetchGifUrl("emergency");
+    let embed = new Discord.MessageEmbed()
+        .setTitle(":rotating_light: REPOST DETECTED :rotating_light:")
+        .setDescription(`
+I found a message sent by ${originalMessage.author} ${moment(originalMessage.createdAt).fromNow()}.
+Link to the *real* post is [here](${originalMessage.url}).
+        `)
+        .setFooter(`This response was calculated in ${moment().diff(start)} ms.`)
+        .setThumbnail(url)
+        .setColor("LUMINOUS_VIVID_PINK");
+    channel.send(embed);
+}
 
+async function findRepost(message) {
+    // expects discordjs::Message
     let start = moment();
     // start by searching for messages in current channel
     let currentChannelCache = await fetchMessages(message.channel);
@@ -74,35 +93,51 @@ async function findRepost(message) {
     });
 
     let originalMessage = findMessageInChannel(message, filteredCurrentChannelCache);
+    if (originalMessage) {
+        sendRepostMessage(start, message.channel, originalMessage);
+        return;
+    }
 
-    if (originalMessage === undefined) {
-        // check every other channel for previous messages
-        const allChannels = message.guild.channels.cache.array();
-        for (const channel of allChannels) {
-            if (channel.type === "text" && channel !== message.channel) {
-                let channelCache = await fetchMessages(channel);
-                let filteredChannelCache = channelCache.filter(m => {
-                    return m.createdTimestamp < message.createdTimestamp;
-                });
+    // check every other channel for previous messages
+    const allChannels = message.guild.channels.cache.array();
+    for (const channel of allChannels) {
+        if (channel.type === "text" && channel !== message.channel) {
+            let channelCache = await fetchMessages(channel);
+            let filteredChannelCache = channelCache.filter(m => {
+                return m.createdTimestamp < message.createdTimestamp;
+            });
 
-                originalMessage = findMessageInChannel(message, filteredChannelCache);
-                if (originalMessage) { break; }
+            originalMessage = findMessageInChannel(message, filteredChannelCache);
+            if (originalMessage) {
+                sendRepostMessage(start, message.channel, originalMessage);
+                return;
+            }
+        }
+    }
+
+    // next, check pinned messages (if we don't already have them cached)
+    let pinned = await fetchPinnedMessages(message.channel);
+    originalMessage = findMessageInChannel(message, pinned);
+    if (originalMessage) {
+        sendRepostMessage(start, message.channel, originalMessage);
+        return;
+    }
+
+    for (const channel of allChannels) {
+        if (channel.type === "text" && channel !== message.channel) {
+            pinned = await fetchPinnedMessages(channel);
+
+            originalMessage = findMessageInChannel(message, pinned);
+            if (originalMessage) {
+                sendRepostMessage(start, message.channel, originalMessage);
+                return;
             }
         }
     }
 
     if (originalMessage) {
-        let url = await generateGifUrl("emergency");
-        let embed = new Discord.MessageEmbed()
-            .setTitle(":rotating_light: REPOST DETECTED :rotating_light:")
-            .setDescription(`
-I found a message sent by ${originalMessage.author} ${moment(originalMessage.createdAt).fromNow()}.
-Link to the *real* post is [here](${originalMessage.url}).
-            `)
-            .setFooter(`This response was calculated in ${moment().diff(start)} ms.`)
-            .setThumbnail(url)
-            .setColor("LUMINOUS_VIVID_PINK");
-        message.channel.send(embed);
+        sendRepostMessage(start, message.channel, originalMessage);
+        return;
     }
 }
 
