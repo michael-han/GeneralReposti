@@ -101,7 +101,7 @@ async function findRepost(message) {
     // check every other channel for previous messages
     const allChannels = message.guild.channels.cache.array();
     for (const channel of allChannels) {
-        if (channel.type === "text" && channel !== message.channel) {
+        if (channel.type === "text" && channel !== message.channel && channel.viewable) {
             let channelCache = await fetchMessages(channel);
             let filteredChannelCache = channelCache.filter(m => {
                 return m.createdTimestamp < message.createdTimestamp;
@@ -124,7 +124,7 @@ async function findRepost(message) {
     }
 
     for (const channel of allChannels) {
-        if (channel.type === "text" && channel !== message.channel) {
+        if (channel.type === "text" && channel !== message.channel && channel.viewable) {
             pinned = await fetchPinnedMessages(channel);
 
             originalMessage = findMessageInChannel(message, pinned);
