@@ -74,7 +74,7 @@ async function sendRepostMessage(start, channel, originalMessage) {
         .setTitle(":rotating_light: REPOST DETECTED :rotating_light:")
         .setDescription(`
 I found a message sent by ${originalMessage.author} ${moment(originalMessage.createdAt).fromNow()}.
-Link to the *real* post is [here](${originalMessage.url}).
+Link to the *real* post is [here](${originalMessage.url}) in ${originalMessage.channel}.
         `)
         .setFooter(`This response was calculated in ${moment().diff(start)} ms.`)
         .setThumbnail(url)
@@ -150,7 +150,6 @@ client.on('message', async message => {
     if (message.author === client.user) { return; }
     if (message.channel.type === "dm") { return; }
 
-
     if (message.embeds.length) {
         // if it has an embed, we need to also make sure it's a link first
         if (message.embeds[0].type !== "image" && message.embeds[0].type !== "gifv") {
@@ -162,6 +161,11 @@ client.on('message', async message => {
                 return;
             }
         }
+    }
+    else if (message.mentions.has(client.user, { ignoreEveryone: true })) {
+        let embed = new Discord.MessageEmbed()
+            .setImage("https://media.giphy.com/media/Nx0rz3jtxtEre/giphy.gif");
+        message.channel.send(embed);
     }
 });
 
