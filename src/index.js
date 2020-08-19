@@ -163,11 +163,6 @@ client.on('message', async message => {
             }
         }
     }
-    else if (message.mentions.has(client.user)) {
-        let embed = new Discord.MessageEmbed()
-            .setImage("https://media.giphy.com/media/Nx0rz3jtxtEre/giphy.gif");
-        message.channel.send(embed);
-    }
 });
 
 client.on('messageUpdate', async (oldMessage, newMessage) => {
