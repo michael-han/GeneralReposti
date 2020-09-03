@@ -14,7 +14,10 @@
     "dotenv": "^8.2.0",
     "moment": "^2.27.0",
     "node-fetch": "^2.6.0",
-    "winston": "^3.3.3"
+    "pino": "^6.5.1"
+  },
+  "devDependencies": {
+    "pino-pretty": "^4.2.0"
   },
   "engines": {
     "node": "14.x",

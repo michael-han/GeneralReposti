@@ -1,4 +1,5 @@
 require('dotenv').config();
+const gif = require('./gif');
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
@@ -8,23 +9,8 @@ const client = new Discord.Client({
     ws: { intents: Discord.Intents.NON_PRIVILEGED }
 });
 
-const fetch = require('node-fetch');
-if (!globalThis.fetch) {
-    globalThis.fetch = fetch;
-}
-const Giphy = require('@giphy/js-fetch-api');
-const giphy = new Giphy.GiphyFetch(process.env.GIPHY);
-
 const moment = require('moment');
-
-async function fetchGifUrl(searchTerm) {
-    const { data: gifs } = await giphy.search(searchTerm, {
-        type: "gifs",
-        sort: "relevant",
-        limit: 25
-    });
-    return gifs[Math.floor(Math.random() * 25)].images.downsized.url;
-}
+const logger = require('pino')();
 
 async function fetchMessages(channel) {
     // expects discordjs::TextChannel
@@ -33,6 +19,7 @@ async function fetchMessages(channel) {
     }
 
     if (channel.messages.cache.size < 100) {
+        logger.info(`${channel.guild.name}:${channel.name} is not fully cached (${channel.messages.cache.size}), grabbing from API`);
         // fetch from API to double check that there are more than 100 messages in the channel
         return await channel.messages.fetch({"limit": 100}, true);
     }
@@ -49,6 +36,8 @@ async function fetchPinnedMessages(channel) {
 }
 
 function findMessageInChannel(message, messageManager) {
+    // probably a temporary log line here
+    logger.info(`findMessageInChannel => cache size: ${messageManager.size}`);
     // expects discordjs::Collection<Snowflake, Message> and string
     return messageManager.find(item => {
         if (item.content === message.content) {
@@ -56,11 +45,13 @@ function findMessageInChannel(message, messageManager) {
         }
 
         if (item.embeds.length && message.embeds.length) {
-            let itemEmbed = item.embeds[0];
             let messageEmbed = message.embeds[0];
-            if (itemEmbed.title === messageEmbed.title &&
-                itemEmbed.description === messageEmbed.description) {
-                return true;
+            let itemEmbed = item.embeds[0];
+            if (messageEmbed.title === itemEmbed.title) {
+                if (messageEmbed.description) {
+                    return messageEmbed.description === itemEmbed.description;
+                }
+                return messageEmbed.url === itemEmbed.url;
             }
         }
         
@@ -69,8 +60,8 @@ function findMessageInChannel(message, messageManager) {
 }
 
 async function sendRepostMessage(start, channel, originalMessage) {
-    let url = await fetchGifUrl("emergency");
-    let embed = new Discord.MessageEmbed()
+    const url = await gif.fetchUrl("emergency");
+    const embed = new Discord.MessageEmbed()
         .setTitle(":rotating_light: REPOST DETECTED :rotating_light:")
         .setDescription(`
 I found a message sent by ${originalMessage.author} ${moment(originalMessage.createdAt).fromNow()}.
@@ -84,7 +75,8 @@ Link to the *real* post is [here](${originalMessage.url}) in ${originalMessage.c
 
 async function findRepost(message) {
     // expects discordjs::Message
-    let start = moment();
+    const start = moment();
+    logger.info(message);
     // start by searching for messages in current channel
     let currentChannelCache = await fetchMessages(message.channel);
     let filteredCurrentChannelCache = currentChannelCache.filter(m => {
@@ -142,7 +134,7 @@ async function findRepost(message) {
 }
 
 client.once('ready', () => {
-	console.log('Ready!');
+	logger.info('Ready!');
 });
 
 client.on('message', async message => {
@@ -157,7 +149,7 @@ client.on('message', async message => {
                 await findRepost(message);
             }
             catch (error) {
-                console.error(error);
+                logger.error(error);
                 return;
             }
         }
@@ -184,13 +176,13 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
                 await findRepost(newMessage);
             }
             catch (error) {
-                console.error(error);
+                logger.error(error);
                 return;
             }
         }
     }
 });
 
-process.on('unhandledRejection', error => console.error('Uncaught Promise Rejection', error));
+process.on('unhandledRejection', error => logger.error('Uncaught Promise Rejection', error));
 
 client.login(process.env.DISCORD);
