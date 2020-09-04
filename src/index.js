@@ -3,9 +3,9 @@ const gif = require('./gif');
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
-    messageCacheMaxSize: -1, // infinite
-    messageCacheLifetime: 48*60*60, // 48 hours
-    messageSweepInterval: 30*60, // 30 minutes
+    messageCacheMaxSize: Infinity,  // infinite
+    messageCacheLifetime: 24*60*60, // 24 hours
+    messageSweepInterval: 10*60,    // 10 minutes
     ws: { intents: Discord.Intents.NON_PRIVILEGED }
 });
 
@@ -13,15 +13,19 @@ const moment = require('moment');
 const logger = require('pino')();
 
 async function fetchMessages(channel) {
+    const loggerInfo = {
+        channel: `${channel.guild.name}:${channel.name}`,
+        function: "fetchMessages"
+    };
     // expects discordjs::TextChannel
     if (channel.type !== "text") {
         throw new Error("Channel type is not text");
     }
 
     if (channel.messages.cache.size < 100) {
-        logger.info(`${channel.guild.name}:${channel.name} is not fully cached (${channel.messages.cache.size}), grabbing from API`);
+        logger.info(loggerInfo, `channel is not fully cached (${channel.messages.cache.size}), grabbing from API`);
         // fetch from API to double check that there are more than 100 messages in the channel
-        return await channel.messages.fetch({"limit": 100}, true);
+        return await channel.messages.fetch({"limit": 100});
     }
     return channel.messages.cache;
 }
@@ -36,8 +40,6 @@ async function fetchPinnedMessages(channel) {
 }
 
 function findMessageInChannel(message, messageManager) {
-    // probably a temporary log line here
-    logger.info(`findMessageInChannel => cache size: ${messageManager.size}`);
     // expects discordjs::Collection<Snowflake, Message> and string
     return messageManager.find(item => {
         if (item.content === message.content) {
@@ -60,6 +62,10 @@ function findMessageInChannel(message, messageManager) {
 }
 
 async function sendRepostMessage(start, channel, originalMessage) {
+    const loggerInfo = {
+        function: "sendRepostMessage"
+    };
+    logger.info(loggerInfo, `Found original message in [${originalMessage.channel.guild.name}:${originalMessage.channel.name}]`);
     const url = await gif.fetchUrl("emergency");
     const embed = new Discord.MessageEmbed()
         .setTitle(":rotating_light: REPOST DETECTED :rotating_light:")
@@ -75,8 +81,13 @@ Link to the *real* post is [here](${originalMessage.url}) in ${originalMessage.c
 
 async function findRepost(message) {
     // expects discordjs::Message
+    const loggerInfo = {
+        message: message.id,
+        function: "findRepost"
+    };
+    logger.info(loggerInfo, "Beginning check for repost");
+    
     const start = moment();
-    logger.info(message);
     // start by searching for messages in current channel
     let currentChannelCache = await fetchMessages(message.channel);
     let filteredCurrentChannelCache = currentChannelCache.filter(m => {
@@ -84,12 +95,15 @@ async function findRepost(message) {
         return m.createdTimestamp < message.createdTimestamp;
     });
 
+    logger.info(loggerInfo, `[${message.channel.guild.name}:${message.channel.name}] filtered to [${filteredCurrentChannelCache.size}] messages`);
+    
     let originalMessage = findMessageInChannel(message, filteredCurrentChannelCache);
     if (originalMessage) {
         sendRepostMessage(start, message.channel, originalMessage);
         return;
     }
 
+    logger.info(loggerInfo, "Not found in original channel, searching others now");
     // check every other channel for previous messages
     const allChannels = message.guild.channels.cache.array();
     for (const channel of allChannels) {
@@ -99,6 +113,8 @@ async function findRepost(message) {
                 return m.createdTimestamp < message.createdTimestamp;
             });
 
+            logger.info(loggerInfo, `[${channel.guild.name}:${channel.name}] filtered to [${filteredChannelCache.size}] messages`);
+
             originalMessage = findMessageInChannel(message, filteredChannelCache);
             if (originalMessage) {
                 sendRepostMessage(start, message.channel, originalMessage);
@@ -107,6 +123,7 @@ async function findRepost(message) {
         }
     }
 
+    logger.info(loggerInfo, "Checking pins");
     // next, check pinned messages (if we don't already have them cached)
     let pinned = await fetchPinnedMessages(message.channel);
     originalMessage = findMessageInChannel(message, pinned);
@@ -149,6 +166,7 @@ client.on('message', async message => {
                 await findRepost(message);
             }
             catch (error) {
+                logger.error({message: message.id, function: "onMessage"}, "Error caught");
                 logger.error(error);
                 return;
             }
@@ -176,6 +194,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
                 await findRepost(newMessage);
             }
             catch (error) {
+                logger.error({message: message.id, function: "onMessageUpdate"}, "Error caught");
                 logger.error(error);
                 return;
             }
@@ -183,6 +202,9 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
     }
 });
 
-process.on('unhandledRejection', error => logger.error('Uncaught Promise Rejection', error));
+process.on('unhandledRejection', error => {
+    logger.error('Uncaught Promise Rejection');
+    logger.error(error);
+});
 
 client.login(process.env.DISCORD);
