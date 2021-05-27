@@ -10,11 +10,13 @@
   "license": "MIT",
   "dependencies": {
     "@giphy/js-fetch-api": "^1.6.1",
-    "discord.js": "^12.2.0",
+    "discord.js": "github:discordjs/discord.js",
     "dotenv": "^8.2.0",
     "moment": "^2.27.0",
     "node-fetch": "^2.6.1",
-    "pino": "^6.5.1"
+    "pino": "^6.5.1",
+    "sequelize": "^6.6.2",
+    "sqlite3": "^5.0.2"
   },
   "devDependencies": {
     "pino-pretty": "^4.2.0"
