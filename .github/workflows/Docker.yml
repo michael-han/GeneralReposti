@@ -3,7 +3,7 @@ name: "Docker Image"
 on:
   push:
     branches:
-      - main
+      - master
     # run only when there is a change in this folder
     paths:
       - "src/**"
