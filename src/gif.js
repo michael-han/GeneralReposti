@@ -1,12 +1,16 @@
+/**
+ * wrapper around giphy api
+ */
+
 const Giphy = require('@giphy/js-fetch-api');
 const giphy = new Giphy.GiphyFetch(process.env.GIPHY);
-
 const fetch = require('node-fetch');
+
 if (!globalThis.fetch) {
     globalThis.fetch = fetch;
 }
 
-async function fetchUrl(searchTerm) {
+async function getGiphyUrl(searchTerm) {
     const { data: gifs } = await giphy.search(searchTerm, {
         type: "gifs",
         sort: "relevant",
@@ -15,4 +19,6 @@ async function fetchUrl(searchTerm) {
     return gifs[Math.floor(Math.random() * 25)].images.downsized.url;
 }
 
-exports.fetchUrl = fetchUrl;
+module.exports = {
+    getGiphyUrl
+};
