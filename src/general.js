@@ -23,7 +23,7 @@ async function fetchMessages(channel) {
     };
 
     // expects discordjs::TextChannel
-    if (channel.type !== "text") {
+    if (channel.type !== "GUILD_TEXT") {
         throw new GeneralChannelTypeError("Channel type is not text");
     }
 
@@ -37,7 +37,7 @@ async function fetchMessages(channel) {
 
 async function fetchPinnedMessages(channel) {
     // expects discordjs::TextChannel
-    if (channel.type !== "text") {
+    if (channel.type !== "GUILD_TEXT") {
         throw new GeneralChannelTypeError("Channel type is not text");
     }
 
@@ -96,7 +96,7 @@ async function findRepost(message) {
     // check every other channel for previous messages
     const allChannels = message.guild.channels.cache.array();
     for (const channel of allChannels) {
-        if (channel.type === "text" && channel !== message.channel && channel.viewable) {
+        if (channel.type === "GUILD_TEXT" && channel !== message.channel && channel.viewable) {
             let cache = await fetchMessages(channel);
             let filteredCache = cache.filter(m => {
                 return m.createdTimestamp < message.createdTimestamp;
@@ -120,7 +120,7 @@ async function findRepost(message) {
     }
 
     for (const channel of allChannels) {
-        if (channel.type === "text" && channel !== message.channel && channel.viewable) {
+        if (channel.type === "GUILD_TEXT" && channel !== message.channel && channel.viewable) {
             pinned = await fetchPinnedMessages(channel);
             originalMessage = findMatchInCache(message, pinned);
             if (originalMessage) {

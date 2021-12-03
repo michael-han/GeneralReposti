@@ -10,7 +10,7 @@ const { HOT_IMAGES, NICE_IMAGES } = require('./pasta.js');
 const Discord = require('discord.js');
 const client = new Discord.Client({
     makeCache: Discord.Options.cacheEverything(),
-    intents: [ Discord.Intents.FLAGS.GUILDS ]
+    intents: [ Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS ]
 });
 
 const moment = require('moment');
@@ -69,7 +69,7 @@ You can find the original [here](${orig.url}) in ${orig.channel} to catch up on 
         .setFooter(`This response was calculated in ${moment().diff(start)} ms.`)
         .setThumbnail(url)
         .setColor("LUMINOUS_VIVID_PINK");
-    message.reply({ embed: embed });
+    message.reply({ embeds: [embed] });
 }
 
 async function sendHotResponse(message, orig, start) {
@@ -81,7 +81,7 @@ async function sendHotResponse(message, orig, start) {
         .setColor("LUMINOUS_VIVID_PINK")
         .setImage(HOT_IMAGES[index]);
 
-    message.reply({ embed: embed });    
+    message.reply({ embeds: [embed] });
 }
 
 async function handleNice(message, which) {
@@ -111,17 +111,14 @@ async function sendNiceResponse(message, which) {
         .setTitle(`${reposti} NICE ${reposti}`)
         .setColor("LUMINOUS_VIVID_PINK")
         .setImage(NICE_IMAGES[which]);
-    
-    message.reply({ embed: embed });
+    message.reply({ embeds: [embed] });
 }
 
 async function handleSpiceCommand(interaction) {
     const loggerInfo = {
         function: "handleSpiceCommand"
     };
-    console.log(interaction);
     let subCommand = interaction.options.getSubcommand();
-    console.log(subCommand);
     if (subCommand === COMMAND_NAMES.spiceGet) {
         try {
             let spiceLevel = await Spice.getTolerance(interaction.user.id, interaction.guildId);
@@ -134,7 +131,6 @@ async function handleSpiceCommand(interaction) {
     }
     else if (subCommand === COMMAND_NAMES.spiceSet) {
         let spiceSetSubCommand = interaction.options.getString("tolerance");
-        console.log(spiceSetSubCommand);
         switch (spiceSetSubCommand) {
             case (COMMAND_NAMES.moreTolerance): {
                 try {
@@ -222,7 +218,7 @@ client.once('ready', async () => {
 	logger.info('Ready!');
 });
 
-client.on('message', async message => {
+client.on('messageCreate', async message => {
     if (!message.content) { return; }
     if (message.author === client.user) { return; }
     if (message.channel.type === "dm") { return; }
@@ -234,6 +230,8 @@ client.on('message', async message => {
         message: message.id,
         guild: message.channel.guild.name
     };
+
+    logger.info(message.embeds);
 
     if (message.embeds.length) {
         // if it has an embed, we need to also make sure it's a link first
@@ -254,7 +252,7 @@ client.on('message', async message => {
     else if (message.mentions.has(client.user, { ignoreEveryone: true })) {
         const url = await getGiphyUrl("obi wan");
         const embed = new Discord.MessageEmbed().setImage(url);
-        message.reply({embed: embed});
+        message.reply({ embeds: [embed] });
     }
     else if (message.content.match(/(\D|\s|^)69(\D|\s|$)/)) {
         handleNice(message, "69");
@@ -282,6 +280,8 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
     // but sometimes it loads it after the fact. so we only care at the point when
     // the embed exists on the message.
     if (oldMessage.embeds.length < newMessage.embeds.length & oldMessage.embeds.length === 0) {
+        logger.info(loggerInfo, newMessage.embeds[0]);
+
         // if it has an embed, we need to also make sure it's a link first
         if (newMessage.embeds[0].type !== "image" && newMessage.embeds[0].type !== "gifv") {
             try {
