@@ -9,10 +9,8 @@ const { HOT_IMAGES, NICE_IMAGES } = require('./pasta.js');
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
-    messageCacheMaxSize: Infinity,  // infinite
-    messageCacheLifetime: 24*60*60, // 24 hours
-    messageSweepInterval: 10*60,    // 10 minutes
-    intents: Discord.Intents.NON_PRIVILEGED
+    makeCache: Discord.Options.cacheEverything(),
+    intents: [ Discord.Intents.FLAGS.GUILDS ]
 });
 
 const moment = require('moment');
@@ -83,7 +81,7 @@ async function sendHotResponse(message, orig, start) {
         .setColor("LUMINOUS_VIVID_PINK")
         .setImage(HOT_IMAGES[index]);
 
-    message.reply(embed);    
+    message.reply({ embed: embed });    
 }
 
 async function handleNice(message, which) {
@@ -114,40 +112,42 @@ async function sendNiceResponse(message, which) {
         .setColor("LUMINOUS_VIVID_PINK")
         .setImage(NICE_IMAGES[which]);
     
-    message.reply(embed);
+    message.reply({ embed: embed });
 }
 
 async function handleSpiceCommand(interaction) {
     const loggerInfo = {
         function: "handleSpiceCommand"
     };
-
-    let subCommand = interaction.options[0];
-    if (subCommand.name === COMMAND_NAMES.spiceGet) {
+    console.log(interaction);
+    let subCommand = interaction.options.getSubcommand();
+    console.log(subCommand);
+    if (subCommand === COMMAND_NAMES.spiceGet) {
         try {
-            let spiceLevel = await Spice.getTolerance(interaction.user.id, interaction.guildID);
+            let spiceLevel = await Spice.getTolerance(interaction.user.id, interaction.guildId);
             interaction.reply(`Your spice level is currently **${Spice.SPICE_LEVELS[spiceLevel]}**`);
         }
         catch (err) {
-            logger.info(loggerInfo, err);
+            logger.error(loggerInfo, err.message);
             interaction.reply("Something went wrong. Ask my boss what's going on.");
         }
     }
-    else if (subCommand.name === COMMAND_NAMES.spiceSet) {
-        let spiceSetSubCommand = subCommand.options[0];
-        switch (spiceSetSubCommand.value) {
+    else if (subCommand === COMMAND_NAMES.spiceSet) {
+        let spiceSetSubCommand = interaction.options.getString("tolerance");
+        console.log(spiceSetSubCommand);
+        switch (spiceSetSubCommand) {
             case (COMMAND_NAMES.moreTolerance): {
                 try {
-                    let spiceLevel = await Spice.moreSpice(interaction.user.id, interaction.guildID);
+                    let spiceLevel = await Spice.moreSpice(interaction.user.id, interaction.guildId);
                     interaction.reply(`Your spice level is now at **${Spice.SPICE_LEVELS[spiceLevel]}**`);
                 }
                 catch (err) {
                     if (err.name === Spice.SPICE_ERRORS.SpiceRangeError) {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("You're already at the max spice level.");
                     }
                     else {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("Something went wrong. Ask my boss what's going on.");
                     }
                 }
@@ -156,16 +156,16 @@ async function handleSpiceCommand(interaction) {
 
             case (COMMAND_NAMES.lessTolerance): {
                 try {
-                    let spiceLevel = await Spice.lessSpice(interaction.user.id, interaction.guildID);
+                    let spiceLevel = await Spice.lessSpice(interaction.user.id, interaction.guildId);
                     interaction.reply(`Your spice level is now at **${Spice.SPICE_LEVELS[spiceLevel]}**`);
                 }
                 catch (err) {
                     if (err.name === Spice.SPICE_ERRORS.SpiceRangeError) {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("You're already at the min spice level.");
                     }
                     else {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("Something went wrong. Ask my boss what's going on.");
                     }
                 }
@@ -174,16 +174,16 @@ async function handleSpiceCommand(interaction) {
 
             case (COMMAND_NAMES.maxTolerance): {
                 try {
-                    let spiceLevel = await Spice.maxSpice(interaction.user.id, interaction.guildID);
+                    let spiceLevel = await Spice.maxSpice(interaction.user.id, interaction.guildId);
                     interaction.reply(`Your spice level is now at **${Spice.SPICE_LEVELS[spiceLevel]}**`);
                 }
                 catch (err) {
                     if (err.name === Spice.SPICE_ERRORS.SpiceError) {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("You're already at the max spice level.");
                     }
                     else {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("Something went wrong. Ask my boss what's going on.");
                     }
                 }
@@ -192,16 +192,16 @@ async function handleSpiceCommand(interaction) {
 
             case (COMMAND_NAMES.noTolerance): {
                 try {
-                    let spiceLevel = await Spice.noSpice(interaction.user.id, interaction.guildID);
+                    let spiceLevel = await Spice.noSpice(interaction.user.id, interaction.guildId);
                     interaction.reply(`Your spice level is now at **${Spice.SPICE_LEVELS[spiceLevel]}**`);
                 }
                 catch (err) {
                     if (err.name === Spice.SPICE_ERRORS.SpiceError) {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("You're already at the min spice level.");
                     }
                     else {
-                        logger.error(loggerInfo, err);
+                        logger.error(loggerInfo, err.message);
                         interaction.reply("Something went wrong. Ask my boss what's going on.");
                     }
                 }
@@ -246,7 +246,7 @@ client.on('message', async message => {
                 }
             }
             catch (err) {
-                logger.error(loggerInfo, err);
+                logger.error(loggerInfo, err.message);
                 return;
             }
         }
@@ -292,16 +292,16 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
                 }
             }
             catch (error) {
-                logger.error(loggerInfo, err);
+                logger.error(loggerInfo, err.message);
                 return;
             }
         }
     }
 });
 
-client.on('interaction', async interaction => {
+client.on('interactionCreate', async interaction => {
     const loggerInfo = {
-        function: "client.on(interaction)"
+        function: "client.on(interactionCreate)"
     };
 
     if (!interaction.isCommand()) { return; }
@@ -310,14 +310,14 @@ client.on('interaction', async interaction => {
         case COMMAND_NAMES.coffee: {
             const url = await getGiphyUrl("coffee");
             const embed = new Discord.MessageEmbed().setImage(url);
-            interaction.reply(embed);
+            interaction.reply({embeds: [embed]});
             break;
         }
 
         case COMMAND_NAMES.goodMerlin: {
             const url = await getGiphyUrl("good morning");
             const embed = new Discord.MessageEmbed().setImage(url);
-            interaction.reply(embed);
+            interaction.reply({embeds: [embed]});
             break;
         }
 
@@ -339,5 +339,5 @@ process.on('unhandledRejection', err => {
     const loggerInfo = {
         function: "process.on(unhandledRejection)"
     };
-    logger.error(loggerInfo, err);
+    logger.error(loggerInfo, err.message);
 });
