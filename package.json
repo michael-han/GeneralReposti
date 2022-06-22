@@ -16,7 +16,7 @@
     "node-fetch": "^3.1.1",
     "pino": "^6.5.1",
     "sequelize": "^6.6.2",
-    "sqlite3": "^5.0.2"
+    "sqlite3": "^5.0.3"
   },
   "devDependencies": {
     "pino-pretty": "^4.2.0"
